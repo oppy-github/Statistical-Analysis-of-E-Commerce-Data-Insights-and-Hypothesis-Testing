@@ -1,0 +1,550 @@
+---
+title: "ecommerce"
+author: "Oppy"
+date: "`r Sys.Date()`"
+output:
+  pdf_document:
+    latex_engine: xelatex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# The e-commerce dataset, sourced from Kaggle, provides a robust foundation for exploring various statistical and analytical techniques. It consists of 3,660 rows and 8 columns, capturing information such as product categories, prices, discounts, final prices, payment methods, and purchase dates. The dataset was initially loaded and pre-processed by selecting relevant columns and renaming them for clarity and usability. Preliminary analysis, including summary statistics, revealed that product prices range from $10.09 to $499.96, while discounts span from 0% to 50%, resulting in final prices ranging from $5.89 to $496.82. Importantly, a check for missing values showed no null entries, indicating data completeness. This dataset is particularly suitable for examining pricing dynamics, category-specific trends, and payment method preferences within the e-commerce domain, forming a basis for further statistical modelling and hypothesis testing.
+
+```{r}
+tinytex::install_tinytex(force = TRUE)
+```
+
+```{r}
+tinytex::tlmgr_update()
+```
+
+
+# load tidyverse
+```{r}
+options(repos = c(CRAN = "https://cloud.r-project.org"))
+install.packages("tidyverse")
+```
+
+```{r}
+library(tidyverse)
+```
+ 
+# import data set 
+
+```{r}
+ecommerce <- read.csv("ecommerce_dataset_updated.csv")
+```
+# Inspect the data
+
+```{r}
+View(ecommerce)
+```
+
+```{r}
+head(ecommerce)
+```
+```{r}
+colnames(ecommerce)
+```
+```{r}
+dim(ecommerce)
+```
+
+# select relevant columns
+```{r}
+ecommerce_2 <- subset(ecommerce, select = c("Product_ID", "Category", "Price..Rs..",
+                                            "Discount....","Final_Price.Rs..",
+                                            "Payment_Method","Purchase_Date")) 
+```
+
+# rename columns
+```{r}
+ecommerce_3 <- (rename(ecommerce_2, "product_id" = "Product_ID", 
+                    "category" = "Category",
+                    "price" = "Price..Rs..",
+                     "discount" = "Discount....",
+                    "final_price" = "Final_Price.Rs..",
+                     "method" = "Payment_Method",
+                    "date" = "Purchase_Date"))
+```
+
+```{r}
+dim(ecommerce_2)
+```
+
+#check for null values
+```{r}
+sum(is.na(ecommerce_2))
+```
+
+```{r}
+View(ecommerce_3)
+```
+
+# measure of central tendency
+
+## mean
+```{r}
+mean(ecommerce_3$price)
+```
+
+```{r}
+ecommerce_3 %>% 
+  select("price", "discount", "final_price") %>%
+           summary()
+```
+
+
+## mode
+```{r}
+mode("ecommerce_3$price")
+```
+
+```{r}
+mode("ecommerce_3$final_price")
+```
+
+```{r}
+ecommerce_3 %>% 
+  select("price", "final_price")%>%
+  mode()
+```
+
+```{r}
+get_mode <- function(x) {
+  uniq_x <- unique(x)
+  freq_x <- tabulate(match(x, uniq_x))
+  modes <- uniq_x[freq_x == max(freq_x)]
+  return(modes)
+}
+ecommerce_3 %>%
+  select(price, final_price)%>%
+  summarise(across(everything(), get_mode))
+```
+
+
+# measure of central tendency | range variance SD IQR
+
+## range 
+```{r}
+range(ecommerce_3$price)
+```
+
+```{r}
+range(ecommerce_3$final_price)
+```
+
+```{r}
+ecommerce_3 %>%
+  select("price") %>%
+  var()
+```
+
+```{r}
+ecommerce_3 %>%
+  select("final_price") %>%
+  var()
+```
+
+```{r}
+sd <- sd(ecommerce_3$price)
+print(sd)
+```
+
+# measure of shapes | skewness & kurtosis 
+```{r}
+install.packages("e1071")
+library(e1071)
+```
+
+```{r}
+kurtosis(ecommerce_3$price, type = 3)
+```
+
+```{r}
+kurtosis(ecommerce_3$final_price, type = 3)
+```
+
+```{r}
+kurtosis(ecommerce_3$discount, type = 3)
+```
+
+```{r}
+skewness(ecommerce_3$price, type = 3)
+```
+
+```{r}
+skewness(ecommerce_3$final_price, type = 3)
+```
+
+```{r}
+skewness(ecommerce_3$discount, type = 3)
+```
+# The kurtosis and skewness values provide insights into the distribution shapes of the price, final price, and discount variables. The kurtosis values for price (-1.20), final price (-0.95), and discount (-0.13) indicate platykurtic distributions, where the data have lighter tails than a normal distribution. The skewness values for price (-0.005) and final price (0.24) suggest near-symmetric distributions, while the discount (0.77) shows a moderate positive skew, indicating a longer tail to the right. These measures highlight that while price and final price are relatively symmetric, discounts tend to cluster towards lower values with a few higher outliers.
+
+
+# method
+```{r}
+methods_group <- ecommerce_3 %>%
+            group_by(method)%>%
+            summarise(final_price = mean(final_price))%>%
+            arrange(final_price)
+View(methods_group)
+```
+
+# category
+```{r}
+category_group <- ecommerce_3 %>%
+            group_by(category) %>%
+            summarise(final_price = mean(final_price))%>%
+            arrange(final_price)
+View(category_group)
+```
+
+# graphical representation
+# bar chat histogram |scatter plot | box plot | QQ plot
+
+```{r}
+unique(ecommerce_3$category)
+```
+
+```{r}
+ggplot(data = methods_group,
+         mapping = aes (x = reorder(method, final_price, desc), y = final_price)) +
+          geom_bar(stat = "identity", fill = "skyblue", color = "black")+
+          theme_minimal()
+```
+
+```{r}
+ggplot(data = category_group,
+       mapping = aes(x=reorder(category,final_price, desc), y=final_price))+
+  geom_bar(stat = "identity", fill = "skyblue", color = "black")+
+  theme_minimal()
+```
+
+# histogram
+```{r}
+ggplot(data = ecommerce_3, 
+       mapping = aes(x = final_price)) +
+  geom_histogram(binwidth = 30, fill = "skyblue", color = "black")
+```
+
+```{r}
+ggplot(data = ecommerce_3,
+       mapping = aes(x=price))+
+      geom_histogram(binwidth = 30, fill = "grey", color = "black")
+```
+
+```{r}
+ggplot( data = ecommerce_3,
+        mapping =  aes(x=discount))+
+        geom_histogram(binwidth =  30, fill = "skyblue", color = "black")
+```
+
+
+# scatterplot
+```{r}
+ggplot(data = ecommerce_3,
+       mapping = aes(price, discount))+
+      geom_point(color = "grey", alpha = 0.6)+
+      theme_minimal()
+```
+
+```{r}
+ggplot(data = methods_group,
+       mapping = aes(method, final_price))+
+  geom_point(color = "darkgrey", alpha = 0.6)+
+  theme_minimal()
+```
+
+```{r}
+ggplot(data = category_group,
+       mapping = aes(category, final_price))+
+  geom_point(color = "darkgrey", alpha = 0.6)+
+  theme_minimal()
+```
+
+# box_plot
+```{r}
+ggplot(data = ecommerce_3,
+       mapping = aes(method, final_price))+
+      geom_boxplot()+
+      theme_minimal()
+```
+
+
+# qqplot
+```{r}
+ggplot(data=ecommerce_3,
+       mapping = aes(sample = final_price))+
+      geom_qq()+
+      stat_qq_line()+
+      theme_minimal()
+```
+
+```{r}
+ggplot(data=ecommerce_3,
+       mapping = aes(sample = price))+
+  geom_qq()+
+  stat_qq_line()+
+  theme_minimal()
+```
+
+
+# Date manipulations 
+```{r}
+glimpse(ecommerce_3)
+```
+
+```{r}
+ecommerce_3$date <- as.Date(ecommerce_3$date, format = "%d-%m-%Y")
+```
+
+```{r}
+ecommerce_4 <- ecommerce_3 %>% # split the date vale into day, month, year
+  mutate(
+    weekday = wday(date, label = TRUE),
+    month = month(date, label = TRUE),
+    year = year(date)
+  )
+```
+
+```{r}
+unique(ecommerce_4$month)
+```
+
+```{r}
+unique(ecommerce_4$weekday)
+```
+
+```{r}
+unique(ecommerce_4$year)
+```
+
+```{r}
+clothing <- ecommerce_4 %>%
+  filter(category == "Clothing") %>%
+  select(category, price, final_price)
+```
+
+```{r}
+electronics <- ecommerce_4 %>%
+  filter(category == "Electronics")
+```
+
+## Statistical Analysis
+
+
+# t-tests | one sample t-test
+
+# objective: how does the mean price of clothing compare to the market standard.
+
+# "For the purpose of this analysis, it is assumed that the prices in the dataset are measured in Australian Dollars (AUD), even though the dataset does not specify the currency."
+
+
+# 2023 average annual online cloth shopping fee, Australia $151.00 AUD (www.statista.com)
+
+# H₀ (Null Hypothesis): There is no significant difference between the sample mean (mean of your dataset) and the population mean (market standard).
+
+# Hₐ (Alternative Hypothesis): There is a significant difference between the sample mean (mean of your dataset) and the population mean (market standard).
+
+```{r}
+t.test(clothing$price, mu = 151)
+```
+# The original dataset does not specify the currency for the prices. For the purpose of this analysis, it is assumed that the prices are measured in Australian Dollars (AUD). The one-sample t-test compares the mean price of clothing in the dataset (AUD 263.12) to the market standard of AUD 151. With a t-value of 17.976 and a p-value < 2.2e-16 (significantly less than 0.05), we reject the null hypothesis, indicating a statistically significant difference between the sample mean and the market standard. The 95% confidence interval (250.86, 275.37) further supports that the true mean price of clothing in the dataset is notably higher than AUD 151.
+
+
+# t-test | independent (two) sample t-test
+
+# Ho: There is no significant difference between the means of both groups
+# Ha: There is a significant difference between the means of both groups
+```{r}
+two_sample <- ecommerce_4 %>%
+                filter(category %in% c("Clothing", "Electronics"))
+View(two_sample)
+```
+
+```{r}
+t.test(price ~ category, data = two_sample, var.equal = TRUE)
+```
+
+```{r}
+t.test(price ~ category, data = two_sample, var.equal = FALSE) # going with this as I'm unsure. 
+```
+# The Welch Two Sample t-test was conducted to compare the mean prices of Clothing and Electronics categories. The test yielded a t-value of 1.3111, with a p-value of 0.1901, indicating no significant difference between the mean prices of the two categories (p > 0.05). The 95% confidence interval for the mean difference ranged from -5.70 to 28.63, further supporting the lack of evidence for a significant difference. The assumption of equal variances (var.equal = TRUE) was not used because the homogeneity of variances was uncertain; Welch's t-test is more robust when variances between groups are unequal.
+
+
+
+# t-test | paired t-test (before and after a treatment) in this case discount
+
+# Ho: There is no significant difference between the means before and after the treatment (discount)
+# Ha: There is a significant difference between the means before and after the treatment (discount)
+
+```{r}
+clothing_paired <- t.test(clothing$price, clothing$final_price, paired = TRUE)
+clothing_paired
+```
+# A paired t-test was conducted to compare the mean price of clothing items before (original price) and after applying a discount (final price). The test resulted in a t-value of 22.855 with a p-value of less than 2.2e-16, indicating a highly significant difference between the two means (p < 0.05). The mean difference between the original price and the final price was 45.95 AUD, with a 95% confidence interval ranging from 42.00 AUD to 49.90 AUD. This suggests that, on average, discounts significantly reduced the price of clothing items in the dataset.
+
+
+```{r}
+mean(clothing$price) - mean(clothing$final_price)
+```
+
+
+# ANOVA  
+# One-Way ANOVA (To check if there is a statistical difference between the means of the different levels)
+
+# Ho: there is no significant difference between the means of the different levels of category
+# Ha there is a significant difference in at least one mean of the levals in the category 
+
+```{r}
+one_way_anova_model <- lm(ecommerce_4$final_price ~ ecommerce_4$category, data = ecommerce_4)
+anova_output <- anova(one_way_anova_model)
+print(anova_output)
+```
+# A one-way ANOVA was conducted to determine whether there is a statistically significant difference in the mean final price across the different levels of the "category" variable. The analysis yielded an F-value of 1.0284 with a p-value of 0.4046. Since the p-value is greater than the significance level of 0.05, we fail to reject the null hypothesis (H₀). This indicates that there is no significant difference in the mean final price among the different product categories in the dataset.
+
+
+
+# Two-Way ANOVA (To check if there is a significant difference in the mean of the different levels of the two categories or
+# any interaction between the two categories on the mean final_price)
+
+# Main Effect: (category)
+# Ho: there is no significant difference in the mean of final_price across the different levels of category
+# Ha: there is a significant difference in the mean of final_price in at least on level of the category variable. 
+
+
+# Main Effect: (payment method)
+# Ho: there is no significant difference in the mean of final_price across the different levels of payment method
+# Ha: there is a significant difference in the mean of final_price in at least on level of the payment metho variable. 
+
+
+# Interaction effect (category and payment method on final_price)
+# Ho: there is no interaction effect between category and payment method on the mean final_price
+# Ha: there is interaction effect between category and payment method on the mean final_price
+```{r}
+two_way_anova_model <- lm (ecommerce_4$final_price ~ category + method + category:method, data = ecommerce_4)
+two_way_anove_output <- anova(two_way_anova_model)
+print(two_way_anove_output)
+```
+# The results of the Two-Way ANOVA show that neither the category (p = 0.40336) nor the payment method (p = 0.83921) have a significant main effect on the mean final_price. Additionally, there is no significant interaction effect between category and payment method (p = 0.09797), although it is marginally close to being significant at the 10% level. Therefore, based on the p-values, we fail to reject the null hypotheses (H₀) for all three effects: there is no significant difference in final_price across the levels of category, payment method, or their interaction.
+
+
+# repeted measure ANOVA is not applicable in the dataset and analsys 
+
+
+## correlation 
+?cor 
+cor(ecommerce_4$price, ecommerce_4$final_price, method = "pearson")
+
+# Ho: there is no significant linear correlation between price & final_price.
+# Ha: there is a significant linear correlation between price & final_price.
+
+```{r}
+cor_matrix_price <- ecommerce_4 %>%
+            select(price, final_price)%>%
+            cor()
+print(cor_matrix_price)
+```
+```{r}
+cor.test(ecommerce_4$price, ecommerce_4$final_price, method = "pearson")
+```
+
+# There is a strong positive linear correlation (r=0.9357) between price and final_price. The relationship is statistically significant (p-value < 0.05). As price increases, final_price also increases
+
+
+
+# Ho: there is no significant linear correlation between discount & final_price.
+# Ha: there is a significant linear correlation between discount & final_price.
+
+```{r}
+cor_matrix_discount <- ecommerce_4 %>%
+            select(discount, final_price)%>%
+            cor()
+print(cor_matrix_discount)
+```
+```{r}
+cor.test(ecommerce$Discount, ecommerce_4$final_price, method = "pearson")
+```
+# There is a weak but statistically significant negative correlation (𝑟 = −0.3115) etween Discount and final_price. This means as the discount increases, the final price tends to decrease. Given the p-value is much smaller than 0.05, we reject the null hypothesis and conclude that there is evidence of a significant linear correlation between the two variables.
+
+
+## regression
+?lm
+
+# simple leaner regression | dependent variable = final_price | independent variable =  discount
+
+# Ho: there is no statistically significant effect of independent variable discount on the dependent variable final_price 
+
+# Ho: there is a statistically significant effect of independent variable discount on the dependent variable final_price 
+
+```{r}
+model_SLR <- lm(final_price ~ discount, data = ecommerce_4)
+summary(model_SLR)
+```
+
+
+# scatter plot of final_price & discount 
+
+
+ggplot(data = ecommerce_4, # main graph 
+        mapping = aes(x=discount, y=final_price))+
+        geom_smooth(method = "lm", col = "blue")
+        
+        
+ggplot(data = ecommerce_4,
+        mapping = aes(x=discount, y=final_price))+
+        geom_point(shape = 3)
+
+
+ggplot(data = ecommerce_4, mapping = aes(x = discount, y = final_price)) +
+  geom_point(shape = 3) +
+  geom_smooth(method = "lm", col = "blue")
+
+
+```{r}
+
+```
+# The linear regression model examining the relationship between `final_price` and `discount` reveals that `discount` has a statistically significant negative effect on `final_price`, with a coefficient of -2.5944 (p-value < 2.2e-16), indicating that for each unit increase in `discount`, `final_price` decreases by approximately 2.5944 units. The intercept is 255.7467, representing the expected `final_price` when `discount` is zero. The residuals range widely, suggesting variability in the data, and the multiple R-squared value is 0.09704, indicating that around 9.7% of the variability in `final_price` can be explained by `discount`. The residual standard error is 116.6, which measures the typical size of the residuals, and the high F-statistic (393.1) with a p-value < 2.2e-16 confirms the overall model's statistical significance.
+
+
+
+
+
+
+# Multiple linear regression model | dependent variable = final_price | independent variable = rice, discount 
+
+# Ho: There is no statistically significant effect of the independent variables discount and price on the dependent variable final_price.
+
+# Ha: There is a statistically significant effect of at least one of the independent variables discount and price on the dependent variable final_price
+
+```{R}
+model_MLR <- lm(final_price ~ price + discount, data = ecommerce_4)
+summary(model_MLR)
+```
+# The multiple linear regression model analyzing the relationship between `final_price`, `price`, and `discount` reveals that both `price` and `discount` have statistically significant effects on `final_price`, with p-values less than 2.2e-16. The coefficient for `price` is 0.8093, indicating that for each unit increase in `price`, `final_price` increases by approximately 0.8093 units. Conversely, the coefficient for `discount` is -2.5674, indicating that for each unit increase in `discount`, `final_price` decreases by approximately 2.5674 units. The intercept is 49.0224, representing the expected `final_price` when both `price` and `discount` are zero. The residual standard error of 21.06 and an adjusted R-squared value of 0.9705 suggest that the model explains around 97.05% of the variability in `final_price`, indicating a strong fit. The overall model is statistically significant, as evidenced by the high F-statistic (6.025e+04) and a p-value < 2.2e-16.
+
+
+
+
+# simple leaner regression where independent variable is a categorical data
+# dependent variable = final_price | independent variable =  category
+
+
+# Ho: There is no statistically significant effect of the different levels of category on the dependent variable final_price
+
+# Ha: There is a statistically significant effect of at least one level of category on the dependent variable final_price
+
+```{r}
+model_SLR_Cat <- lm(final_price ~ category, data = ecommerce_4)
+summary(model_SLR_Cat)
+```
+# The multiple linear regression model analyzing the `final_price` based on different `category` levels in the e-commerce dataset indicates that the intercept is statistically significant with a p-value less than 2e-16, but the categories themselves do not significantly predict the `final_price`, as shown by their non-significant p-values. The residuals demonstrate variability, with the residual standard error being 122.7 on 3653 degrees of freedom. The model explains a very low proportion of variance in `final_price`, with an R-squared value of 0.001686 and an adjusted R-squared value of 0.0000465. The F-statistic of 1.028 and a p-value of 0.4046 indicate that the overall model is not statistically significant.
+
+
+
+
